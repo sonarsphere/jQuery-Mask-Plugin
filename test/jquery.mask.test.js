@@ -4,34 +4,22 @@ $(document).ready(function(){
     var testfield = $('.simple-field'),
         testfieldDataMask = $('.simple-field-data-mask'),
         testfieldDataMaskWithReverse = $('.simple-field-data-mask-reverse'),
+        testfieldDataMaskWithClearIfNotMatch = $('.simple-field-data-mask-clearifnotmatch'),
+        testfieldDataMaskWithClearIfNotMatchAndOptionalMask = $('.simple-field-data-mask-clearifnotmatch-and-optional-mask'),
         testdiv = $('.simple-div'),
         typeTest = function (typedValue, obj) {
           obj = typeof obj === "undefined" ? testfield : obj;
 
-          return obj.keydown().val(typedValue).keyup().val();
+          return obj.keydown().val(typedValue).trigger('input').val();
         },
         typeDivTest = function(typedValue){
-          return testdiv.keydown().text(typedValue).keyup().text();
+          return testdiv.keydown().text(typedValue).trigger('input').text();
         };
 
     module('Setting Up');
     test("test if the mask method exists after plugin insertion", function() {
       equal( typeof testfield.mask , "function" , "mask function should exists" );
     });
-
-    module("Disabling Automatic Maxlength");
-    test("maxlength should be 11", function(){
-      testfield.mask('999-9990-99', {maxlength: false});
-      equal( testfield.attr('maxlength'), undefined)
-    });
-
-    module("Automatic Maxlength");
-    test("maxlength should be 11", function(){
-      testfield.mask('999-9990-99');
-      equal( testfield.attr('maxlength'), 11)
-    });
-
-    
 
     module('Simple Masks');
     test("Masks with only numbers.", function(){
@@ -61,11 +49,11 @@ $(document).ready(function(){
 
     test("When I change the mask on-the-fly with onChange callback things should work normally", function(){
 
-      var masks = ['0000.00009', '0.0000.0000']; 
+      var masks = ['0000.00009', '0.0000.0000'];
       var SPphoneMask = function(phone){
         return phone.length <= 9 ? masks[0] : masks[1];
       };
-      
+
       testfield.mask(SPphoneMask, {onChange: function(phone, e, currentField, options){
         $(currentField).mask(SPphoneMask(phone), options);
       }});
@@ -79,16 +67,16 @@ $(document).ready(function(){
       equal( typeTest("1234567"), "1234.567");
       equal( typeTest("12345678"), "1234.5678");
       equal( typeTest("123456789"), "1.2345.6789");
-     
+
     });
 
     test("When I change the mask on-the-fly with onKeyPress callback things should work normally", function(){
 
-      var masks = ['0000.00009', '0.0000.0000']; 
+      var masks = ['0000.00009', '0.0000.0000'];
       var SPphoneMask = function(phone){
         return phone.length <= 9 ? masks[0] : masks[1];
       };
-      
+
       testfield.mask(SPphoneMask, {onKeyPress: function(phone, e, currentField, options){
         $(currentField).mask(SPphoneMask(phone), options);
       }});
@@ -102,10 +90,34 @@ $(document).ready(function(){
       equal( typeTest("1234567"), "1234.567");
       equal( typeTest("12345678"), "1234.5678");
       equal( typeTest("123456789"), "1.2345.6789");
-     
+
+    });
+
+    test("#onInvalid callback. should call when invalid", function(){
+      testfield.mask('00/00/0000', {onInvalid: function(val, e, el, invalid, options){
+        equal(val, "1")
+        equal(typeof e, "object")
+        equal(typeof el, "object")
+        equal(invalid.length, 1);
+        equal(invalid[0]["e"], "/\\d/");
+        equal(invalid[0]["p"], 1);
+        equal(invalid[0]["v"], "a");
+        equal(typeof options.onInvalid, "function");
+      }});
+
+      equal( typeTest("1a") , "1");
+    });
+
+    test("#onInvalid callback. should not call when valid", function(){
+      var callback = sinon.spy();
+      testfield.mask('00/00/0000', {onInvalid: callback});
+
+      equal( typeTest("11") , "11");
+      equal(callback.called, false)
     });
 
     test('When I typed a char thats the same as the mask char', function(){
+      testfield.unmask();
       testfield.mask('00/00/0000');
 
       equal( typeTest("00/"), "00/");
@@ -126,10 +138,10 @@ $(document).ready(function(){
       equal( typeTest("00/00/0"), "00/00/0");
       equal( typeTest("00/00/00"), "00/00/00");
     });
-    
+
     test("Testing masks with a literal on the last char", function () {
       testfield.mask("(99)");
-      
+
       equal( typeTest("(99"), "(99)");
     });
 
@@ -137,7 +149,7 @@ $(document).ready(function(){
     module('Masks with numbers and especial characters');
 
     test("Masks with numbers and special characters.", function(){
-      testfield.mask('(123) 456-7899');
+      testfield.mask('(000) 000-0000');
 
       equal( typeTest("1"), "(1");
       equal( typeTest('12'), "(12");
@@ -214,7 +226,7 @@ $(document).ready(function(){
       equal( typeTest("12.345.678-90"), "12.345.678-90");
       equal( typeTest("123.456.789-00"), "123.456.789-00");
       equal( typeTest("123.456.789-00"), "123.456.789-00");
-      
+
       equal( typeTest("123.456.789a00"), "123.456.789-00");
       equal( typeTest("123-a5"), "12-35");
 
@@ -254,7 +266,7 @@ $(document).ready(function(){
     equal(typeTest("12.345.678,9"), "1.234.567,89");
     equal(typeTest("1.234.567,8"), "123.456,78");
   });
-    
+
   test("Testing numbers with recursive mask", function(){
     testfield.mask("0#.#");
 
@@ -272,7 +284,7 @@ $(document).ready(function(){
     equal(typeTest("12.34.56"), "12.34.56");
     equal(typeTest("12.34.5"), "12.34.5");
   });
-  
+
   test("Testing numbers with recursive mask with one #", function(){
     testfield.mask("0#", {});
 
@@ -307,7 +319,7 @@ $(document).ready(function(){
   });
   test("Testing reversible masks with a literal on the last char", function () {
       testfield.mask("(99)");
-      
+
       equal( typeTest("(99"), "(99)");
     });
 
@@ -331,12 +343,19 @@ $(document).ready(function(){
   });
 
   test("when I get the unmasked value with recursive mask", function(){
-    testfield.mask('#.##0,00', {reverse:true, maxlength: false});
+    testfield.mask('#.##0,00', {reverse:true});
 
     equal( typeTest("123123123123123123", testfield), "1.231.231.231.231.231,23");
     equal( testfield.cleanVal(), "123123123123123123");
   });
 
+  module('Masking a value programmatically');
+
+  test("when I get the masked value programmatically", function(){
+    testfield.mask('(00) 0000-0000');
+    typeTest("1299999999", testfield);
+    equal( testfield.masked("3488888888"), "(34) 8888-8888");
+  });
 
   module('personalized settings')
 
@@ -352,6 +371,63 @@ $(document).ready(function(){
 
     equal( typeTest('12/34/5678'), '12/34/5678');
     equal( typeTest('12/**/5678'), '12/**/5678');
+  });
+
+  test("when adding more itens to the table translation #3",function(){
+    var old_translation = $.jMaskGlobals.translation
+    $.jMaskGlobals.translation = {
+      '1': {pattern: /\d/},
+      '9': {pattern: /\d/, optional: true},
+      '#': {pattern: /\d/, recursive: true},
+      'A': {pattern: /[a-zA-Z0-9]/},
+      'S': {pattern: /[a-zA-Z]/}
+    };
+
+    testfield.mask('00/11/1111');
+
+    equal( typeTest('12/12/5678'), '00/12/1256');
+
+    testfield.mask('11/00/1111');
+    equal( typeTest('12/12/5678'), '12/00/1256');
+
+    $.jMaskGlobals.translation = old_translation;
+  });
+
+  test("when adding more itens to the table translation #fallback",function(){
+    testfield.mask('zz/z0/0000', {'translation': {'z': {pattern: /[0-9*]/, fallback: '*'}}});
+
+    equal( typeTest('12/:4/5678'), '12/*4/5678');
+    equal( typeTest('::/:4/5678'), '**/*4/5678');
+  });
+
+  test("test the translation #fallback #1" , function(){
+    testfield.mask('00t00', {'translation': {'t': {pattern: /[:,.]/, fallback: ':'}}});
+
+    equal( typeTest('1'), '1');
+    equal( typeTest('13'), '13');
+    equal( typeTest('137'), '13:7');
+    equal( typeTest('1337'), '13:37');
+    equal( typeTest('13z00'), '13:00');
+  });
+
+  test("test the translation #fallback #2" , function(){
+    testfield.mask('00/t0/t0', {'translation': {'t': {pattern: /[:,.*]/, fallback: '*'}}});
+
+    equal( typeTest('1'), '1');
+    equal( typeTest('13'), '13');
+    equal( typeTest('13/'), '13/');
+    equal( typeTest('13/a'), '13/*');
+    equal( typeTest('13/a1z1'), '13/*1/*1');
+  });
+
+  test("test the translation #fallback #3" , function(){
+    testfield.mask('tt/00/00', {'translation': {'t': {pattern: /[:,.*]/, fallback: '*'}}});
+
+    equal( typeTest('*'), '*');
+    equal( typeTest('13'), '**/13');
+    equal( typeTest('13/'), '**/13/');
+    equal( typeTest('13/a'), '**/13/');
+    equal( typeTest('13/a1z1'), '**/13/11');
   });
 
   test("when adding opcional chars",function(){
@@ -388,11 +464,11 @@ $(document).ready(function(){
     equal( typeDivTest('00000000'), '00/00/0000');
     equal( typeDivTest('00/00/0000'), '00/00/0000');
     equal( typeDivTest('0a/00/0000'), '00/00/000');
-  
+
   });
 
   module('Testing data-mask attribute support');
-  
+
   test("Testing data-mask attribute", function(){
     equal( typeTest("00/", testfieldDataMask), "00/");
     equal( typeTest("00a", testfieldDataMask), "00/");
@@ -410,37 +486,225 @@ $(document).ready(function(){
 
   module('Event fire test');
 
-  test('onChange Test', 12, function(){
-    var typeAndBlur = function(typedValue){
-      testfield.keydown().val(typedValue).keyup();
-      testfield.triggerHandler("blur");
-    };
+  // TODO: need to understand why zepto.js isnt calling change event!
+  if(!window.Zepto) {
+    test('onChange Test', 2, function(){
+      testfield.unmask();
 
-    testfield.on("change", function(e){
-      ok(true, "Change event!!");
+      var callback = sinon.spy();
+      var mock = sinon.mock()
+      var typeAndBlur = function(typedValue){
+        testfield.trigger('keydown');
+        testfield.val(typedValue);
+        testfield.trigger('input');
+        testfield.trigger("blur");
+      };
+
+      testfield.mask('000.(000).000/0-0');
+
+      testfield.on("change", callback);
+
+      typeAndBlur("");
+      typeAndBlur("1");
+      typeAndBlur("12");
+      typeAndBlur("123");
+      typeAndBlur("1234");
+      typeAndBlur("12345");
+      typeAndBlur("123456");
+      typeAndBlur("1234567");
+      typeAndBlur("12345678");
+      typeAndBlur("123456789");
+      typeAndBlur("123456789");
+      typeAndBlur("1234567891");
+      typeAndBlur("12345678912");
+
+      equal(testfield.val(), "123.(456).789/1-2" );
+      equal(true, sinon.match(11).or(12).test(callback.callCount))
+
+      testfield.off("change");
+      testfield.unmask();
+
     });
+  }
 
-    testfield.mask('000.(000).000/0-0');
-
-    typeAndBlur("1");
-    typeAndBlur("12");
-    typeAndBlur("123");
-    typeAndBlur("1234");
-    typeAndBlur("12345");
-    typeAndBlur("123456");
-    typeAndBlur("1234567");
-    typeAndBlur("12345678");
-    typeAndBlur("123456789");
-    typeAndBlur("123456789");
-    typeAndBlur("1234567891");
-    typeAndBlur("12345678912");
-
-    equal( testfield.val(), "123.(456).789/1-2" );
-
-    testfield.off("change");
-  });
 
   test('onDrop Test', function(){
     ok(true, "todo");
+  });
+
+  module('testing Remove If Not Match Feature');
+
+  test('test when clearifnotmatch javascript notation', 4, function(){
+    var typeAndFocusOut = function(typedValue){
+      testfield.keydown().val(typedValue).trigger('input');
+      testfield.trigger("focusout");
+    };
+
+    testfield.mask('000');
+
+    typeAndFocusOut("1");
+    equal( testfield.val(), "1" );
+
+    testfield.mask('000', {clearIfNotMatch: true});
+
+    typeAndFocusOut("1");
+    equal( testfield.val(), "" );
+
+    typeAndFocusOut("12");
+    equal( testfield.val(), "" );
+
+    typeAndFocusOut("123");
+    equal( testfield.val(), "123" );
+  });
+
+  test('test when clearifnotmatch javascript notation #2', 4, function(){
+    var typeAndFocusOut = function(typedValue){
+      testfield.keydown().val(typedValue).trigger('input');
+      testfield.trigger("focusout");
+    };
+
+    testfield.mask('7 (000) 000-0000');
+
+    typeAndFocusOut("1");
+    equal( testfield.val(), "7 (1" );
+
+    testfield.mask('7 (000) 000-0000', {clearIfNotMatch: true});
+
+    typeAndFocusOut("1");
+    equal( testfield.val(), "" );
+
+    typeAndFocusOut("12");
+    equal( testfield.val(), "" );
+
+    typeAndFocusOut("7 (123) 123-1234");
+    equal( testfield.val(), "7 (123) 123-1234" );
+  });
+
+  test('test when clearifnotmatch is HTML notation', 3, function(){
+    var typeAndFocusOut = function(typedValue){
+      testfieldDataMaskWithClearIfNotMatch.keydown().val(typedValue).trigger('input');
+      testfieldDataMaskWithClearIfNotMatch.trigger("focusout");
+    };
+
+    typeAndFocusOut("1");
+    equal( testfieldDataMaskWithClearIfNotMatch.val(), "" );
+
+    typeAndFocusOut("12");
+    equal( testfieldDataMaskWithClearIfNotMatch.val(), "" );
+
+    typeAndFocusOut("123");
+    equal( testfieldDataMaskWithClearIfNotMatch.val(), "123" );
+  });
+
+  module('testing Remove If Not Match Feature');
+
+  test('test when clearifnotmatch javascript notation', 1, function(){
+
+    testfield.mask('000', {placeholder: '___'});
+    equal( testfield.attr('placeholder'), "___" );
+
+  });
+
+  test('test when clearifnotmatch with optional mask', 9, function(){
+    // html notation
+    var typeAndBlur = function(field, typedValue){
+      field.keydown().val(typedValue).trigger('input');
+      field.trigger("focusout");
+    };
+
+    typeAndBlur(testfieldDataMaskWithClearIfNotMatchAndOptionalMask, "1");
+    equal( testfieldDataMaskWithClearIfNotMatchAndOptionalMask.val(), "" );
+
+    typeAndBlur(testfieldDataMaskWithClearIfNotMatchAndOptionalMask, "12");
+    equal( testfieldDataMaskWithClearIfNotMatchAndOptionalMask.val(), "12" );
+
+    typeAndBlur(testfieldDataMaskWithClearIfNotMatchAndOptionalMask, "123");
+    equal( testfieldDataMaskWithClearIfNotMatchAndOptionalMask.val(), "123" );
+
+    // javascript notation
+    testfield.mask('099.099.099.099', {clearIfNotMatch: true});
+
+    typeAndBlur(testfield, "1");
+    equal( testfield.val(), "" );
+
+    typeAndBlur(testfield, "123.");
+    equal( testfield.val(), "" );
+
+    typeAndBlur(testfield, "123.0");
+    equal( testfield.val(), "" );
+
+    typeAndBlur(testfield, "123.01.000.");
+    equal( testfield.val(), "" );
+
+    typeAndBlur(testfield, "123.01.000.123");
+    equal( testfield.val(), "123.01.000.123" );
+
+    typeAndBlur(testfield, "0.0.0.0");
+    equal( testfield.val(), "0.0.0.0" );
+  });
+
+  test('test when clearifnotmatch with recursive mask', 4, function(){
+    // html notation
+    var typeAndBlur = function(field, typedValue){
+      field.keydown().val(typedValue).trigger('input');
+      field.trigger("focusout");
+    };
+
+    // javascript notation
+    testfield.mask('#.##0,00', {clearIfNotMatch: true, reverse: true});
+
+    typeAndBlur(testfield, "0");
+    equal( testfield.val(), "" );
+
+    typeAndBlur(testfield, "00");
+    equal( testfield.val(), "" );
+
+    typeAndBlur(testfield, "0,00");
+    equal( testfield.val(), "0,00" );
+
+    typeAndBlur(testfield, "1.000,00");
+    equal( testfield.val(), "1.000,00" );
+
+  });
+
+  module('dynamically loaded elements')
+  test('#non-inputs', function(){
+    expect(5);
+
+    var $container = $('#container-dy-non-inputs');
+    var clock = this.clock;
+    var ticker;
+    var tester;
+    var c = 0;
+
+    function write() {
+
+      if (c >= 5) {
+          clearInterval(ticker);
+          clearInterval(tester);
+          return;
+      }
+
+      c++;
+
+      $container.append('<div class="c">' + c + c + c + c + '</div>');
+      clock.tick(1000);
+    };
+
+    function testIt() {
+
+      var cs = $container.find('.c');
+      $.each(cs, function(k, field){
+        var t = k + 1;
+        equal($(field).text(), '' + t + t + ':' + t + t);
+        t++;
+      });
+    };
+
+    ticker = setInterval(write, 1000);
+
+    write();
+    $('.c', $container).mask('00:00');
+    testIt()
   });
 });

@@ -3,5 +3,7 @@ css/*
 img/*
 js/*
 node_modules/
+bower_components/
 .sparkleshare
 libpeerconnection.log
+.versions
